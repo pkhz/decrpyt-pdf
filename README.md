@@ -74,6 +74,32 @@ Checkpoint files are saved as JSON and can be reloaded when the same PDF is sele
 - `fonts/` — icon/font assets, currently for hide/show pass icon
 - `requirements.txt` — dependencies
 
+## AESV2 Decryption Flow
+
+Each guess will run this flow:
+
+```
+Candidate password
+       ↓
+Normalize/pad password to 32 bytes
+       ↓
+MD5(password + O + P + ID)
+       │
+       ├── R=4 → 16-byte key
+       ↓
+File encryption key
+       ↓
+Compute U value
+       ↓
+Compare candidate U with PDF's /U
+       │
+   ┌───┴───┐
+   ↓       ↓
+ match   mismatch
+   ↓       ↓
+valid    invalid
+```
+
 ## Notes
 
 - Works efficiently with small estimate time if password is partially known eg: passXX. XX is unknown count of letters or numbers.
