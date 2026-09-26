@@ -255,6 +255,8 @@ class MainWindow(QWidget):
         self.log_output.setMinimumWidth(300)
         self.log_output.setMinimumHeight(220)
         self.log_output.setPlaceholderText("Search log will appear here...")
+        self.copy_log_button = QPushButton("Copy log")
+        self.copy_log_button.clicked.connect(self.copy_log_to_clipboard)
         self._last_tried_count = 0
         self._last_candidate = ""
         self._checkpoint = None
@@ -277,9 +279,10 @@ class MainWindow(QWidget):
         )
 
         families = QFontDatabase.applicationFontFamilies(font_id)
-        print(families)
-
-        material_font = QFont(families[0])
+        if not families:
+            material_font = QFont()
+        else:
+            material_font = QFont(families[0])
         material_font.setPointSize(18)
         self.show_password_button.setFont(material_font)
 
@@ -407,54 +410,81 @@ class MainWindow(QWidget):
 
         self.set_guess_controls_enabled(False)
 
-        tabs = QTabWidget()
-        tabs.addTab(standard_tab, "Prefix / Suffix")
-        # Custom pattern is intentionally disabled for now while it is still WIP.
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(12)
 
-        layout.addWidget(self.file_label)
-        layout.addWidget(self.encryption_label)
-        layout.addWidget(self.runtime_estimate_label)
-        layout.addWidget(select_button)
-        layout.addLayout(password_row)
-        layout.addWidget(verify_button)
-        layout.addWidget(self.progress_label)
-        layout.addWidget(tabs)
-        layout.addWidget(self.cpu_usage_label)
-        layout.addWidget(self.recommend_workers_button)
-        layout.addWidget(self.worker_recommendation_label)
-        layout.addWidget(self.thread_status_label)
-        layout.addWidget(self.worker_progress_label)
+        file_box = QGroupBox("Target file & verification")
+        file_layout = QVBoxLayout(file_box)
+        file_layout.addWidget(self.file_label)
+        file_layout.addWidget(select_button)
+        file_layout.addLayout(password_row)
+        file_layout.addWidget(verify_button)
+        file_layout.addWidget(self.encryption_label)
+        file_layout.addWidget(self.runtime_estimate_label)
+        left_layout.addWidget(file_box)
+
+        config_box = QGroupBox("Pattern & workers")
+        config_layout = QVBoxLayout(config_box)
+        config_form = QGridLayout()
+        config_form.addWidget(QLabel("Known prefix:"), 0, 0)
+        config_form.addWidget(self.prefix_input, 0, 1)
+        config_form.addWidget(QLabel("Unknown digits:"), 1, 0)
+        config_form.addWidget(self.unknown_count, 1, 1)
+        config_form.addWidget(QLabel("Suffix:"), 2, 0)
+        config_form.addWidget(self.suffix_input, 2, 1)
+        config_form.addWidget(QLabel("Workers:"), 3, 0)
+        config_form.addWidget(self.process_count, 3, 1)
+        config_layout.addLayout(config_form)
+        config_layout.addWidget(self.cpu_usage_label)
+        config_layout.addWidget(self.recommend_workers_button)
+        config_layout.addWidget(self.worker_recommendation_label)
+        left_layout.addWidget(config_box)
 
         charset_group = QGroupBox("Character sets")
-        charset_layout = QVBoxLayout()
-
+        charset_layout = QVBoxLayout(charset_group)
         charset_row_1 = QHBoxLayout()
         charset_row_1.addWidget(self.lowercase)
         charset_row_1.addWidget(self.uppercase)
         charset_row_1.addWidget(self.numbers)
         charset_row_1.addWidget(self.symbols)
         charset_layout.addLayout(charset_row_1)
-
         charset_layout.addWidget(QLabel("Custom:"))
         charset_layout.addWidget(self.custom)
-        charset_group.setLayout(charset_layout)
-        layout.addWidget(charset_group)
+        left_layout.addWidget(charset_group)
 
-        layout.addWidget(self.guess_button)
-        layout.addWidget(self.pause_button)
-        layout.addWidget(self.stop_guess_button)
-        layout.addWidget(self.load_checkpoint_button)
-        layout.addWidget(self.pause_controls_widget)
+        left_layout.addStretch()
+
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(12)
+
+        execution_box = QGroupBox("Execution status")
+        execution_layout = QVBoxLayout(execution_box)
+        execution_layout.addWidget(self.progress_label)
+        execution_layout.addWidget(self.worker_progress_label)
+        execution_layout.addWidget(self.thread_status_label)
+        execution_layout.addWidget(self.guess_button)
+        execution_layout.addWidget(self.pause_button)
+        execution_layout.addWidget(self.stop_guess_button)
+        execution_layout.addWidget(self.load_checkpoint_button)
+        execution_layout.addWidget(self.pause_controls_widget)
+        right_layout.addWidget(execution_box)
 
         log_group = QGroupBox("Search log")
-        log_layout = QVBoxLayout()
+        log_layout = QVBoxLayout(log_group)
         log_layout.addWidget(self.log_output)
-        log_group.setLayout(log_layout)
+        log_layout.addWidget(self.copy_log_button)
+        right_layout.addWidget(log_group)
 
-        outer_layout = QHBoxLayout()
-        outer_layout.addLayout(layout, 3)
-        outer_layout.addWidget(log_group, 1)
-        self.setLayout(outer_layout)
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(12)
+        main_layout.addWidget(left_panel, 3)
+        main_layout.addWidget(right_panel, 2)
+        self.setLayout(main_layout)
 
     def detect_encryption_type(self, pdf_path):
         try:
@@ -534,6 +564,7 @@ class MainWindow(QWidget):
         self.guess_button.setEnabled(enabled)
         self.pause_button.setEnabled(enabled and self._guess_thread is not None and self._guess_thread.isRunning())
         self.stop_guess_button.setEnabled(enabled and self._guess_thread is not None and self._guess_thread.isRunning())
+        self.load_checkpoint_button.setEnabled(enabled)
         self.process_count.setEnabled(enabled)
         self.recommend_workers_button.setEnabled(enabled)
         self.lowercase.setEnabled(enabled and self.use_global_charset_checkbox.isChecked())
@@ -554,12 +585,15 @@ class MainWindow(QWidget):
     def update_encryption_status(self):
         if not self.pdf_path:
             self.encryption_label.setText("Encryption: not checked")
+            self.load_checkpoint_button.setEnabled(False)
             self.set_guess_controls_enabled(False)
             return
 
         result = self.detect_encryption_type(self.pdf_path)
         self.encryption_label.setText(result["message"])
-        self.set_guess_controls_enabled(result.get("matched", False))
+        allowed = bool(result.get("matched", False))
+        self.load_checkpoint_button.setEnabled(allowed)
+        self.set_guess_controls_enabled(allowed)
 
     def select_pdf(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1043,6 +1077,13 @@ class MainWindow(QWidget):
             parts.append(f"{key}: index {current_index}/{total_range} (assigned {assigned_start}–{assigned_end})")
 
         return "; ".join(parts) if parts else "worker summary unavailable"
+
+    def copy_log_to_clipboard(self):
+        text = self.log_output.toPlainText().strip()
+        if not text:
+            return
+        QApplication.clipboard().setText(text)
+        self.append_log("Search log copied to clipboard.")
 
     def append_log(self, text, clear=False):
         if clear:
