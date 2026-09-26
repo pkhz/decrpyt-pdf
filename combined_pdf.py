@@ -518,7 +518,23 @@ def guess_password_by_pattern(
     clear_guess_stop()
     resume_guessing()
 
+    resume_session = resume_session or {}
+    saved_worker_progress = resume_session.get("worker_progress", {}) or {}
     resume_start = int(resume_session.get("next_index", 0)) if resume_session else 0
+    if saved_worker_progress:
+        saved_next_indexes = []
+        for value in saved_worker_progress.values():
+            if not value or not isinstance(value, (list, tuple)):
+                continue
+            if len(value) < 2:
+                continue
+            try:
+                current_index = int(value[0])
+            except (TypeError, ValueError):
+                continue
+            saved_next_indexes.append(current_index + 1)
+        if saved_next_indexes:
+            resume_start = max(resume_start, max(saved_next_indexes))
     resume_start = max(0, min(resume_start, total))
     if resume_start >= total:
         return None
@@ -532,9 +548,17 @@ def guess_password_by_pattern(
     resume_cursor = resume_start
 
     for worker_index in range(worker_count):
-        remaining = max(1, total - resume_start)
-        start = resume_start + ((remaining * worker_index) // worker_count)
-        end = resume_start + ((remaining * (worker_index + 1)) // worker_count)
+        saved_entry = saved_worker_progress.get(f"worker_{worker_index}") if saved_worker_progress else None
+        if saved_entry and isinstance(saved_entry, (list, tuple)) and len(saved_entry) >= 4:
+            assigned_start = max(0, int(saved_entry[2]))
+            assigned_end = max(assigned_start, min(int(saved_entry[3]), total))
+            current_index = int(saved_entry[0])
+            start = max(assigned_start, min(current_index + 1, assigned_end))
+            end = assigned_end
+        else:
+            remaining = max(1, total - resume_start)
+            start = resume_start + ((remaining * worker_index) // worker_count)
+            end = resume_start + ((remaining * (worker_index + 1)) // worker_count)
         worker = ctx.Process(
             target=_parallel_worker,
             args=(pdf_path, prefix, unknown_count, suffix, charset, start, end, worker_index, tried_counter, found_queue, progress_queue, _STOP_EVENT, _PAUSE_EVENT),

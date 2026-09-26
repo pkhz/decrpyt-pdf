@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QGridLayout,
     QTextEdit,
+    QSizePolicy,
 )
 
 from main import check_password
@@ -364,6 +365,8 @@ class MainWindow(QWidget):
         self.cpu_usage_label = QLabel()
         self.worker_progress_label = QLabel("Worker progress: none")
         self.worker_recommendation_label = QLabel("Recommended workers: auto")
+        self.worker_recommendation_label.setWordWrap(True)
+        self.worker_recommendation_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.thread_status_label = QLabel("Thread status: ready")
         self.recommend_workers_button = QPushButton("Recommend workers")
         self.recommend_workers_button.setEnabled(False)
@@ -692,18 +695,19 @@ class MainWindow(QWidget):
         self.refresh_cpu_summary()
 
         if search_space <= 1_000:
-            detail = "very small search space, 1 worker is enough"
+            detail = "very small search space, so 1 worker is enough and avoids process overhead."
         elif search_space <= 1_000_000:
-            detail = "moderate search space, a few workers are useful but not required"
+            detail = "moderate search space, so a few workers help without much extra overhead."
         elif search_space <= 10_000_000:
-            detail = "large search space, parallel workers improve throughput"
+            detail = "large search space, so parallel workers improve throughput noticeably."
         else:
-            detail = "very large search space, parallelism is worth using"
+            detail = "very large search space, so multiple workers are worth using to reduce total runtime."
 
         self.worker_recommendation_label.setText(
-            f"Recommended workers: {recommended} | "
-            f"Criteria: {self.unknown_count.value()} unknowns, {len(charset)} chars, search size {search_space:,} | "
-            f"{detail} | current choice: {chosen}"
+            f"Recommended workers: {recommended}\n"
+            f"Reason: {detail}\n"
+            f"Criteria: {self.unknown_count.value()} unknowns, {len(charset)} chars, search size {search_space:,}.\n"
+            f"Current choice: {chosen}."
         )
 
     def refresh_cpu_summary(self):
@@ -735,14 +739,23 @@ class MainWindow(QWidget):
         )
         search_space = self.search_space_size()
         if search_space > 0:
+            if search_space <= 1_000:
+                reason = "Very small search space: one worker avoids unnecessary multiprocessing overhead."
+            elif search_space <= 1_000_000:
+                reason = "Moderate search space: a few workers can help without much efficiency loss."
+            elif search_space <= 10_000_000:
+                reason = "Large search space: more workers improve throughput and reduce runtime."
+            else:
+                reason = "Very large search space: parallel workers are recommended to keep the search practical."
             self.worker_recommendation_label.setText(
-                f"Recommended workers: {suggested} | "
-                f"Criteria: {self.unknown_count.value()} unknowns, {len(self.character_set_for_search())} chars, space {search_space:,}"
+                f"Recommended workers: {suggested}\n"
+                f"Reason: {reason}\n"
+                f"Criteria: {self.unknown_count.value()} unknowns, {len(self.character_set_for_search())} chars, space {search_space:,}."
             )
         else:
             self.worker_recommendation_label.setText(
-                f"Recommended workers: {suggested} | "
-                f"Comparison: 1w slowest, 2w balanced, {suggested}w preferred, higher counts may plateau"
+                f"Recommended workers: {suggested}\n"
+                f"Reason: More workers can help, but the search space is too small to benefit much from parallelism."
             )
 
     def update_progress(self, tried, total, worker_progress=None):
