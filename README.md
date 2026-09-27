@@ -2,6 +2,9 @@
 
 This project is a local Python desktop app for checking and brute-forcing PDF passwords using a PySide6 GUI. Current limitation is only for encryption Standard/AESV2.
 
+<img width="845" height="668" alt="image" src="https://github.com/user-attachments/assets/5fd98768-346b-4636-bfe2-db0c1a320f3a" />
+
+
 It lets you:
 - select a PDF file
 - detect whether it is encrypted
