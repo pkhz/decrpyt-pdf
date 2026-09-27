@@ -73,10 +73,12 @@ Checkpoint files are saved as JSON and can be reloaded when the same PDF is sele
 - `combined_pdf.py` — brute-force search logic, checkpoint handling, multiprocessing, and resume logic
 - `fonts/` — icon/font assets, currently for hide/show pass icon
 - `requirements.txt` — dependencies
+- `combined.py` — single pdf decrypt algorithm for testing/checking
+- `checktype.pdf` — single to check pdf encryption type
 
 ## AESV2 Decryption Flow
 
-Each guess will run this flow:
+Can check type of encryption of a pdf from `checktype.py`. Can check/test decryption flow from `combined.py`. Each guess in app will run this flow:
 
 ```
 Candidate password
